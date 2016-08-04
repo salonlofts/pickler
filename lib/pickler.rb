@@ -127,7 +127,7 @@ class Pickler
     Dir[features_path('**','*.feature')].map {|f|feature(f)}.select {|f|f.pushable?}
   end
 
-  def scenario_features(excluded_states = %w(unscheduled unstarted))
+  def scenario_features(excluded_states = %w(unscheduled))
     project.stories(scenario_word, :includedone => true).reject do |s|
       Array(excluded_states).map {|state| state.to_s}.include?(s.current_state)
     end.select do |s|
