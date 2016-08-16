@@ -52,7 +52,7 @@ class Pickler
     def pull(default = nil)
       story = story() # force the read into local_body before File.open below blows it away
       filename = filename() || pickler.features_path("#{story.suggested_basename(default)}.feature")
-      File.open(filename,'w') {|f| f.puts story.to_s(pickler.format)}
+      File.open(filename,'w') {|f| f.puts story.to_s(pickler.format, :remove_flags_from_description => true)}
       @filename = filename
     end
 
