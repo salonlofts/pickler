@@ -103,7 +103,8 @@ class Pickler
         if body =~ /\A@https?\b\S*(\s+@\S+)*\s*$/
           self.labels = body[/\A@.*/].split(/\s+/)[1..-1].map {|l| l[1..-1].tr('_,',' _')}
         end
-        body = body.sub(/\A(?=.*pivotaltracker).*/,'').sub(/\A[\n\s]+/,'')
+        body_with_flags = body.sub(/\A(?=.*pivotaltracker).*/,'').sub(/\A[\n\s]+/,'')
+        body = body_with_flags.sub(/\A(?:[@#].*\n)+/,'').sub(/\A[\n\s]+/,'')
         if body =~ /\A(\w+): (.*)/
           self.story_type = $1.downcase
           self.name = $2
