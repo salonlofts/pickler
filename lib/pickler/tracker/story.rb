@@ -5,7 +5,7 @@ class Pickler
       TYPES = %w(bug feature chore release)
       STATES = %w(unscheduled unstarted started finished delivered rejected accepted)
 
-      attr_reader :project, :labels
+      attr_reader :project, :labels, :flags
       reader :url
       date_reader :created_at, :accepted_at, :deadline
       accessor :current_state, :name, :description, :owned_by, :requested_by, :story_type
@@ -25,7 +25,11 @@ class Pickler
       end
 
       def labels=(value)
-        @labels = normalize_labels(value)
+        @labels = normalize_values(value)
+      end
+      
+      def flags=(value)
+        @flags = normalize_values(value)
       end
 
       def transition!(state)
@@ -80,7 +84,9 @@ class Pickler
       end
 
       def to_s(format = :tag)
-        to_s = "#{header(format)}\n#{story_type.capitalize}: #{name}\n"
+        to_s = "#{header(format)}\n\n"
+        flags.each{|flag| to_s << flag + "\n"} if flags
+        to_s << "\n#{story_type.capitalize}: #{name}\n"
         description_lines.each do |line|
           to_s << "  #{line}".rstrip << "\n"
         end
@@ -103,8 +109,11 @@ class Pickler
         if body =~ /\A@https?\b\S*(\s+@\S+)*\s*$/
           self.labels = body[/\A@.*/].split(/\s+/)[1..-1].map {|l| l[1..-1].tr('_,',' _')}
         end
-        body_with_flags = body.sub(/\A(?=.*pivotaltracker).*/,'').sub(/\A[\n\s]+/,'')
-        body = body_with_flags.sub(/\A(?:[@#].*\n)+/,'').sub(/\A[\n\s]+/,'')
+        body = body.sub(/\A(?=.*pivotaltracker).*/,'').sub(/\A[\n\s]+/,'')
+        if body =~ /\A(?:[@#].*\n)+/
+          self.flags = body[/\A(?:[@#].*\n)+/].split("\n")
+        end
+        body = body.sub(/\A(?:[@#].*\n)+/,'').sub(/\A[\n\s]+/,'')
         if body =~ /\A(\w+): (.*)/
           self.story_type = $1.downcase
           self.name = $2
@@ -162,7 +171,7 @@ class Pickler
         hash = attributes.reject do |k,v|
           !%w(current_state deadline description estimate name owned_by requested_by story_type).include?(k)
         end
-        if force_labels || !id || normalize_labels(attributes["labels"]) != labels
+        if force_labels || !id || normalize_values(attributes["labels"]) != labels
           hash["labels"] = labels.join(", ")
         end
         Pickler.hash_to_xml(:story, hash)
@@ -200,7 +209,7 @@ class Pickler
       end
 
       private
-      def normalize_labels(value)
+      def normalize_values(value)
         Array(value).join(", ").strip.split(/\s*,\s*/)
       end
 
