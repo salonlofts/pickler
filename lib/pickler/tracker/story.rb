@@ -13,6 +13,7 @@ class Pickler
       def initialize(project, attributes = {})
         @project = project
         @labels = []
+        @flags = []
         super(attributes)
         @iteration = Iteration.new(project, attributes["iteration"]) if attributes["iteration"]
       end
@@ -83,9 +84,11 @@ class Pickler
         project.tracker
       end
 
-      def to_s(format = :tag)
-        to_s = "#{header(format)}\n\n"
-        flags.each{|flag| to_s << flag + "\n"} if flags
+      def to_s(format = :tag, opts={})
+        extract_flags_from_description if opts[:remove_flags_from_description]
+        to_s = "#{header(format)}\n"
+        to_s << "\n" unless flags.empty?
+        flags.each{|flag| to_s << flag + "\n"} unless flags.empty?
         to_s << "\n#{story_type.capitalize}: #{name}\n"
         description_lines.each do |line|
           to_s << "  #{line}".rstrip << "\n"
@@ -105,6 +108,13 @@ class Pickler
         end
       end
 
+      def extract_flags_from_description
+        if description =~ /\A(?:[@].*\n)+/
+          self.flags = description[/\A(?:[@].*\n)+/].split("\n")
+          self.description = description.sub(/\A(?:[@].*\n)+/,'').sub(/\A[\n\s]+/,'')
+        end
+      end
+
       def to_s=(body)
         if body =~ /\A@https?\b\S*(\s+@\S+)*\s*$/
           self.labels = body[/\A@.*/].split(/\s+/)[1..-1].map {|l| l[1..-1].tr('_,',' _')}
@@ -117,7 +127,9 @@ class Pickler
         if body =~ /\A(\w+): (.*)/
           self.story_type = $1.downcase
           self.name = $2
-          description = $'
+          description = ''
+          flags.each{|flag| description << '  ' + flag + "\n"} unless flags.empty?
+          description += $'
         else
           self.story_type = "feature"
           self.name = body[/.*/]
